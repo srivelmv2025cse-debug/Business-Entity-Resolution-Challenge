@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="description" content="Business Entity Resolution – AI-Powered Business Matching System. Identify matching business entities across three independent noisy data sources."/>
+  <title>Business Entity Resolution · AI Matching System</title>
+  <link rel="stylesheet" href="/static/css/style.css"/>
+  <!-- Chart.js CDN – no business data; purely charting -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════════════════ -->
+<nav id="sidebar" role="navigation" aria-label="Main navigation">
+  <div class="sidebar-logo">
+    <h1>Business Entity<br>Resolution</h1>
+    <p>AI-Powered Matching System</p>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Overview</div>
+    <button class="nav-item active" data-page="dashboard" id="nav-dashboard">
+      <span class="icon">📊</span> Dashboard
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Data</div>
+    <button class="nav-item" data-page="upload" id="nav-upload">
+      <span class="icon">📁</span> Data Upload
+    </button>
+    <button class="nav-item" data-page="preprocessing" id="nav-preprocessing">
+      <span class="icon">🔧</span> Preprocessing
+    </button>
+    <button class="nav-item" data-page="candidates" id="nav-candidates">
+      <span class="icon">🔍</span> Candidate Generation
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">ML Pipeline</div>
+    <button class="nav-item" data-page="model" id="nav-model">
+      <span class="icon">🤖</span> ML Model
+    </button>
+    <button class="nav-item" data-page="matching" id="nav-matching">
+      <span class="icon">🔗</span> Entity Matching
+    </button>
+    <button class="nav-item" data-page="evaluation" id="nav-evaluation">
+      <span class="icon">📈</span> Evaluation
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Results</div>
+    <button class="nav-item" data-page="output" id="nav-output">
+      <span class="icon">📤</span> Output
+    </button>
+    <button class="nav-item" data-page="validation" id="nav-validation">
+      <span class="icon">✅</span> Validation
+    </button>
+  </div>
+
+  <div class="nav-section">
+    <div class="nav-section-label">Reference</div>
+    <button class="nav-item" data-page="methodology" id="nav-methodology">
+      <span class="icon">📖</span> Methodology
+    </button>
+    <button class="nav-item" data-page="architecture" id="nav-architecture">
+      <span class="icon">🏗</span> Architecture
+    </button>
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════════════════
+     MAIN
+════════════════════════════════════════════════════════ -->
+<div id="main">
+  <!-- TOPBAR -->
+  <header id="topbar">
+    <h2 id="topbar-title">📊 Dashboard</h2>
+    <span id="api-status" class="status-pill pill-idle">⬤ Connecting…</span>
+  </header>
+
+  <!-- CONTENT -->
+  <main id="content">
+
+    <!-- ══ PAGE: DASHBOARD ══════════════════════════════════ -->
+    <section id="page-dashboard" class="page active">
+      <div class="section-title">Business Entity Resolution</div>
+      <div class="section-sub">Identify matching business entities across three independent noisy data sources.</div>
+
+      <div id="dash-alert"></div>
+
+      <!-- F0.5 Hero -->
+      <div class="f05-hero">
+        <div>
+          <div id="f05-score" class="f05-score">—</div>
+          <div class="f05-label">Macro F0.5 Score</div>
+        </div>
+        <div class="f05-meta">
+          <h3>Official Challenge Metric</h3>
+          <p>F0.5 weights precision more heavily than recall (β=0.5). This is the primary optimization objective. A score of 1.0 is perfect.</p>
+          <div class="text-xs text-muted mt-8" id="f05-threshold">Train model to compute score</div>
+        </div>
+      </div>
+
+      <!-- Stats cards -->
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-label">Source 1 Records</div>
+          <div class="card-value accent" id="card-s1">—</div>
+          <div class="card-sub">Reference source</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Source 2 Records</div>
+          <div class="card-value accent" id="card-s2">—</div>
+          <div class="card-sub">Candidate pool</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Source 3 Records</div>
+          <div class="card-value accent" id="card-s3">—</div>
+          <div class="card-sub">Candidate pool</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Candidate Pairs</div>
+          <div class="card-value" id="card-cands">—</div>
+          <div class="card-sub">After blocking</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Predicted Matches</div>
+          <div class="card-value success" id="card-matches">—</div>
+          <div class="card-sub">Above threshold</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Singletons</div>
+          <div class="card-value warn" id="card-singletons">—</div>
+          <div class="card-sub">No match found</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Model Status</div>
+          <div class="card-value text-sm" id="card-model">—</div>
+          <div class="card-sub">LightGBM classifier</div>
+        </div>
+        <div class="card">
+          <div class="card-label">F0.5 Score</div>
+          <div class="card-value purple" id="card-f05">—</div>
+          <div class="card-sub">Validation set</div>
+        </div>
+      </div>
+
+      <!-- Quick actions -->
+      <div class="panel">
+        <div class="panel-title">⚡ Quick Actions</div>
+        <div class="flex gap-12 flex-wrap">
+          <button class="btn btn-primary" onclick="navigate('upload')">📁 Upload Data</button>
+          <button class="btn btn-outline" onclick="navigate('preprocessing')">🔧 Run Preprocessing</button>
+          <button class="btn btn-outline" onclick="navigate('model')">🤖 Train Model</button>
+          <button class="btn btn-outline" onclick="navigate('evaluation')">📈 View Evaluation</button>
+          <button class="btn btn-outline" onclick="navigate('validation')">✅ Validate Output</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: UPLOAD ═════════════════════════════════════ -->
+    <section id="page-upload" class="page">
+      <div class="section-title">Data Upload</div>
+      <div class="section-sub">Upload TSV files for training and test. <strong>TSV files required</strong> — tab-separated values only.</div>
+
+      <div class="alert alert-info mb-16">📋 All files must be TSV (tab-separated). Do not upload CSV or Excel files. Incorrectly formatted files will be rejected.</div>
+
+      <div class="panel">
+        <div class="panel-title">📚 Training Data</div>
+        <div class="cards-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+          <!-- train_source1 -->
+          <div>
+            <div class="form-label">train_source1.tsv</div>
+            <div class="upload-zone" id="upload-train-s1">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>train_source1.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8" id="status-train-s1"></div>
+          </div>
+          <!-- train_source2 -->
+          <div>
+            <div class="form-label">train_source2.tsv</div>
+            <div class="upload-zone" id="upload-train-s2">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>train_source2.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+          <!-- train_source3 -->
+          <div>
+            <div class="form-label">train_source3.tsv</div>
+            <div class="upload-zone" id="upload-train-s3">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>train_source3.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+          <!-- ground truth -->
+          <div>
+            <div class="form-label">train_ground_truth.tsv</div>
+            <div class="upload-zone" id="upload-train-gt">
+              <div class="upload-zone-icon">🏷</div>
+              <p>Click or drag <strong>train_ground_truth.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🧪 Test Data</div>
+        <div class="cards-grid" style="grid-template-columns:repeat(auto-fill,minmax(220px,1fr))">
+          <div>
+            <div class="form-label">test_source1.tsv</div>
+            <div class="upload-zone" id="upload-test-s1">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>test_source1.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+          <div>
+            <div class="form-label">test_source2.tsv</div>
+            <div class="upload-zone" id="upload-test-s2">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>test_source2.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+          <div>
+            <div class="form-label">test_source3.tsv</div>
+            <div class="upload-zone" id="upload-test-s3">
+              <div class="upload-zone-icon">📄</div>
+              <p>Click or drag <strong>test_source3.tsv</strong></p>
+            </div>
+            <div class="upload-status text-sm text-muted mt-8"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📋 Required Columns</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>File</th><th>Required Columns</th><th>Notes</th></tr></thead>
+            <tbody>
+              <tr><td>source1 / source2 / source3</td><td class="mono">entity_id, business_name, business_address, country</td><td>Country is open-set (US, France, India, etc.)</td></tr>
+              <tr><td>ground_truth</td><td class="mono">source1_entity_id, source2_entity_id</td><td>Maps S1→S2/S3 matches</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: PREPROCESSING ══════════════════════════════ -->
+    <section id="page-preprocessing" class="page">
+      <div class="section-title">Preprocessing</div>
+      <div class="section-sub">Normalize business names and addresses, then generate candidate pairs via blocking.</div>
+
+      <div class="panel">
+        <div class="panel-title">🚀 Run Pipeline</div>
+        <p class="text-sm text-muted mb-12">Runs preprocessing + candidate blocking on the test data (or synthetic data if not present).</p>
+        <button class="btn btn-primary" id="btn-preprocess" onclick="runPreprocessing()">▶ Run Preprocessing + Blocking</button>
+        <div id="preprocess-status" class="mt-12 text-sm text-muted"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📖 Name Normalization Examples</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Original</th><th>Normalized</th><th>Rule Applied</th></tr></thead>
+            <tbody>
+              <tr><td>ACME Corporation</td><td class="mono">acme corp</td><td>lowercase + legal suffix</td></tr>
+              <tr><td>Salt &amp; Pepper Co.</td><td class="mono">salt and pepper co</td><td>&amp;→and + punctuation</td></tr>
+              <tr><td>Müller GmbH</td><td class="mono">muller gmbh</td><td>Unicode→ASCII</td></tr>
+              <tr><td>TechNova Solutions Ltd</td><td class="mono">technova sol ltd</td><td>solutions→sol</td></tr>
+              <tr><td>Boulangerie Dupont SARL</td><td class="mono">boulangerie dupont sarl</td><td>Unicode + lowercase</td></tr>
+              <tr><td>Global Freight &amp; Logistics Inc</td><td class="mono">global freight and logistics inc</td><td>&amp;→and + inc</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📍 Address Normalization Examples</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Original</th><th>Normalized</th><th>Rule Applied</th></tr></thead>
+            <tbody>
+              <tr><td>123 Main Street</td><td class="mono">123 main st</td><td>street→st + lowercase</td></tr>
+              <tr><td>456 Innovation Avenue</td><td class="mono">456 innovation ave</td><td>avenue→ave</td></tr>
+              <tr><td>12 Rue de la Paix, 75001 Paris</td><td class="mono">12 rue de la paix 75001 paris</td><td>Unicode + lowercase</td></tr>
+              <tr><td>78 Harbor Blvd, Suite 400</td><td class="mono">78 harbor blvd ste 400</td><td>suite→ste, digits preserved</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🔢 Normalization Rules</div>
+        <div class="pipeline-steps">
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Unicode NFKD → ASCII transliteration</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Lowercase conversion</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">&amp; → "and" substitution</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Punctuation removal (digits preserved in addresses)</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Legal suffix normalization (Ltd, Inc, Corp, GmbH, SARL, …)</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Common abbreviation expansion (Street→St, Avenue→Ave, …)</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Whitespace normalization</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Postal code extraction (US ZIP, UK postcode, French CP, Indian PIN)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: CANDIDATES ══════════════════════════════════ -->
+    <section id="page-candidates" class="page">
+      <div class="section-title">Candidate Generation</div>
+      <div class="section-sub">Multi-strategy blocking to generate S1→S2/S3 candidate pairs.</div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-label">Total Source 1</div>
+          <div class="card-value accent" id="cand-total-s1">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Total Candidates</div>
+          <div class="card-value" id="cand-total">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Avg per S1</div>
+          <div class="card-value" id="cand-avg">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Reduction Ratio</div>
+          <div class="card-value success" id="cand-reduction">—</div>
+          <div class="card-sub">vs naive cross-product</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🧱 Blocking Strategies</div>
+        <div id="blocking-strategies" class="pipeline-steps">
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Exact normalized name</span><span class="badge badge-active">active</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Token-based blocking</span><span class="badge badge-active">active</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Country-aware blocking</span><span class="badge badge-active">active</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Address token blocking</span><span class="badge badge-active">active</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">Postal-code-like token blocking</span><span class="badge badge-active">active</span></div>
+          <div class="pipeline-step step-done"><span class="step-icon">✓</span><span class="step-name">TF-IDF retrieval (char n-gram cosine)</span><span class="badge badge-active">active</span></div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🔍 Search Candidates by S1 ID</div>
+        <div class="flex gap-12 mb-12">
+          <input class="form-control" id="cand-search-input" placeholder="e.g. S1_001" style="max-width:260px"/>
+          <button class="btn btn-primary" onclick="searchCandidate()">Search</button>
+        </div>
+        <div id="cand-search-result"></div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: MODEL ═══════════════════════════════════════ -->
+    <section id="page-model" class="page">
+      <div class="section-title">ML Model</div>
+      <div class="section-sub">LightGBM classifier trained on 16 similarity features with F0.5-optimized threshold.</div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-label">F0.5 Score</div>
+          <div class="card-value purple" id="metric-f05">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Precision</div>
+          <div class="card-value success" id="metric-precision">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Recall</div>
+          <div class="card-value accent" id="metric-recall">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Threshold</div>
+          <div class="card-value" id="metric-threshold">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Predicted Matches</div>
+          <div class="card-value" id="metric-matches">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Singletons</div>
+          <div class="card-value warn" id="metric-singletons">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">False Merges</div>
+          <div class="card-value" id="metric-false-merges">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Training Pairs</div>
+          <div class="card-value" id="metric-train-pairs">—</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">🎓 Training</div>
+        <p class="text-sm text-muted mb-12">Trains LightGBM on positive + hard-negative examples. Automatically sweeps thresholds to maximize macro F0.5.</p>
+        <div class="flex gap-12 flex-wrap">
+          <button class="btn btn-success" id="btn-train" onclick="trainModel()">▶ TRAIN MODEL</button>
+          <button class="btn btn-warn" id="btn-predict" onclick="runPredict()">▶ RUN TEST PREDICTION</button>
+        </div>
+        <div id="model-status" class="mt-12"></div>
+        <div id="predict-status" class="mt-8"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📐 Feature Engineering (16 features)</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Category</th><th>Feature</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td rowspan="7">Name</td><td class="mono">exact_name_match</td><td>Normalized names identical</td></tr>
+              <tr><td class="mono">rapidfuzz_ratio</td><td>Token sort ratio (RapidFuzz)</td></tr>
+              <tr><td class="mono">levenshtein_sim</td><td>Normalized Levenshtein similarity</td></tr>
+              <tr><td class="mono">jaccard_name</td><td>Token Jaccard similarity</td></tr>
+              <tr><td class="mono">tfidf_cosine_name</td><td>TF-IDF cosine on names</td></tr>
+              <tr><td class="mono">token_overlap_name</td><td>|intersection|/|union| name tokens</td></tr>
+              <tr><td class="mono">name_len_diff</td><td>Normalized length difference</td></tr>
+              <tr><td rowspan="6">Address</td><td class="mono">exact_address_match</td><td>Addresses identical</td></tr>
+              <tr><td class="mono">jaccard_address</td><td>Token Jaccard on addresses</td></tr>
+              <tr><td class="mono">tfidf_cosine_address</td><td>TF-IDF cosine on addresses</td></tr>
+              <tr><td class="mono">token_overlap_address</td><td>|intersection|/|union| addr tokens</td></tr>
+              <tr><td class="mono">numeric_token_overlap</td><td>Digit-only token overlap</td></tr>
+              <tr><td class="mono">address_sim</td><td>RapidFuzz ratio on addresses</td></tr>
+              <tr><td rowspan="3">Other</td><td class="mono">country_match</td><td>Country strings equal</td></tr>
+              <tr><td class="mono">common_token_count</td><td>|name_tokens ∩ cand_tokens|</td></tr>
+              <tr><td class="mono">number_overlap</td><td>Numeric substring Jaccard</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: MATCHING ════════════════════════════════════ -->
+    <section id="page-matching" class="page">
+      <div class="section-title">Entity Matching</div>
+      <div class="section-sub">Search any Source 1 entity to see candidates, feature scores, and the model's decision.</div>
+
+      <div class="panel">
+        <div class="panel-title">🔎 Search Entity</div>
+        <div class="flex gap-12 mb-12">
+          <input class="form-control" id="match-search-input" placeholder="Enter S1 Entity ID, e.g. S1_001" style="max-width:320px"/>
+          <button class="btn btn-primary" onclick="lookupEntity()">Look Up</button>
+        </div>
+        <div class="alert alert-info text-sm">💡 Enter a Source 1 entity ID. The model will score all candidates and show MATCH / NO MATCH decisions.</div>
+      </div>
+
+      <div id="match-result"></div>
+    </section>
+
+    <!-- ══ PAGE: EVALUATION ══════════════════════════════════ -->
+    <section id="page-evaluation" class="page">
+      <div class="section-title">Evaluation</div>
+      <div class="section-sub">F0.5 is the official challenge metric — it weights precision more heavily than recall (β=0.5).</div>
+
+      <div class="alert alert-info mb-16">
+        📐 <strong>F0.5 Formula:</strong> F0.5 = (1.25 × P × R) / (0.25×P + R) — This penalizes false merges more than missed matches.
+      </div>
+
+      <div class="cards-grid">
+        <div class="card">
+          <div class="card-label">F0.5 Score</div>
+          <div class="card-value purple" id="eval-f05">—</div>
+          <div class="card-sub">Primary metric</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Precision</div>
+          <div class="card-value success" id="eval-precision">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Recall</div>
+          <div class="card-value accent" id="eval-recall">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Threshold</div>
+          <div class="card-value" id="eval-threshold">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Matches</div>
+          <div class="card-value" id="eval-matches">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Singletons</div>
+          <div class="card-value" id="eval-singletons">—</div>
+        </div>
+        <div class="card">
+          <div class="card-label">False Merges</div>
+          <div class="card-value warn" id="eval-false-merges">—</div>
+        </div>
+      </div>
+
+      <div id="eval-curve-status" class="alert alert-info mb-16 hidden"></div>
+
+      <div class="chart-wrap">
+        <div class="chart-title">Threshold vs F0.5 Score</div>
+        <div class="chart-container"><canvas id="chart-f05"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Threshold vs Precision</div>
+        <div class="chart-container"><canvas id="chart-precision"></canvas></div>
+      </div>
+      <div class="chart-wrap">
+        <div class="chart-title">Threshold vs Recall</div>
+        <div class="chart-container"><canvas id="chart-recall"></canvas></div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: OUTPUT ═════════════════════════════════════ -->
+    <section id="page-output" class="page">
+      <div class="section-title">Output Files</div>
+      <div class="section-sub">Download and preview the final TSV output files.</div>
+
+      <div class="panel">
+        <div class="panel-title">📄 candidate_pairs.tsv</div>
+        <div class="flex gap-12 mb-12">
+          <button class="btn btn-outline" onclick="downloadFile('candidate_pairs')">⬇ Download candidate_pairs.tsv</button>
+          <button class="btn btn-outline btn-sm" onclick="loadFilePreview('candidate_pairs','preview-cp')">🔄 Refresh</button>
+        </div>
+        <div class="alert alert-info text-sm mb-12">Format: <code>source1_entity_id[TAB]candidate_entity_ids</code> (comma-separated IDs)</div>
+        <div id="preview-cp"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📄 matching_results.tsv</div>
+        <div class="flex gap-12 mb-12">
+          <button class="btn btn-outline" onclick="downloadFile('matching_results')">⬇ Download matching_results.tsv</button>
+          <button class="btn btn-outline btn-sm" onclick="loadFilePreview('matching_results','preview-mr')">🔄 Refresh</button>
+        </div>
+        <div class="alert alert-info text-sm mb-12">Format: <code>source1_entity_id[TAB]matched_entity_ids</code> (comma-separated IDs, empty if singleton)</div>
+        <div id="preview-mr"></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📦 Submission Package</div>
+        <p class="text-sm text-muted mb-12">Create a zip package with output files + source code for final challenge submission.</p>
+        <div class="flex gap-12">
+          <button class="btn btn-primary" id="btn-package" onclick="createPackage()">📦 Create Submission Package</button>
+          <a class="btn btn-success hidden" id="btn-dl-package" href="/api/submission/download" target="_blank">⬇ Download Submission ZIP</a>
+        </div>
+        <div id="package-status" class="mt-12 text-sm"></div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: VALIDATION ══════════════════════════════════ -->
+    <section id="page-validation" class="page">
+      <div class="section-title">Validation</div>
+      <div class="section-sub">Run all final submission validation checks to ensure output correctness.</div>
+
+      <div class="panel">
+        <div class="panel-title">🔍 Validation Checks</div>
+        <button class="btn btn-primary mb-16" id="btn-validate" onclick="runValidation()">▶ Run Validation</button>
+        <div id="validation-output">
+          <div class="alert alert-info">Click "Run Validation" to check all submission rules.</div>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-title">📋 Validation Rules</div>
+        <div class="pipeline-steps">
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Every test Source 1 entity appears exactly once</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">No duplicate Source 1 IDs</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">No duplicate matched IDs</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">No duplicate candidate IDs</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Only S2/S3 IDs appear as candidates or matches</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">No Source 1 self-matches</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Every matched ID exists in candidate_pairs.tsv</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Empty match lists allowed (singletons)</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Output columns are correct</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Files are TSV format</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">France test records are included</span></div>
+          <div class="pipeline-step"><span class="step-icon">📌</span><span class="step-name">Country is not hard-coded (open-set)</span></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: METHODOLOGY ════════════════════════════════ -->
+    <section id="page-methodology" class="page">
+      <div class="section-title">Methodology</div>
+      <div class="section-sub">Technical explanation of the Business Entity Resolution pipeline.</div>
+
+      <div class="panel">
+        <div class="panel-title">1. Problem Statement</div>
+        <p class="text-sm">Given three independently collected datasets of business entities (Source 1, Source 2, Source 3), the task is to identify, for every Source 1 entity, the zero or more matching entities in Sources 2 and 3. Sources contain noise: spelling variations, abbreviations, OCR errors, missing fields, and different address formats.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">2. Dataset</div>
+        <p class="text-sm">All data is provided as TSV files with columns: entity_id, business_name, business_address, country. Countries are open-set — the system supports any country (US, France, Germany, India, etc.) without hard-coding. The test set includes French records.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">3. Data Preprocessing</div>
+        <p class="text-sm">Each source is loaded with <code>pd.read_csv(file, sep="\t")</code>. Data validation checks for required columns, missing entity IDs, and duplicate IDs. Countries are reported but never filtered.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">4. Name Normalization</div>
+        <p class="text-sm">Unicode NFKD → ASCII, lowercase, &amp;→and, punctuation removal, legal suffix normalization (Ltd→limited, GmbH, SARL, Inc, Corp, …), common abbreviations (Technology→tech, Solutions→sol, …), whitespace normalization.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">5. Address Normalization</div>
+        <p class="text-sm">Same Unicode/lowercase pipeline. Digits preserved (street numbers, ZIP codes). Common abbreviations: Street→st, Avenue→ave, Boulevard→blvd, Suite→ste, etc. Postal code patterns extracted for blocking.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">6. Candidate Blocking</div>
+        <p class="text-sm">Six strategies are applied in sequence, each adding to the candidate pool: (1) Exact normalized name, (2) Name token overlap (inverted index), (3) Country + name token, (4) Address token overlap, (5) Postal code token, (6) TF-IDF character n-gram cosine (threshold 0.25). Only S1→S2 and S1→S3 pairs are generated — never S1→S1.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">7. Feature Engineering</div>
+        <p class="text-sm">16 features per candidate pair: exact name/address match, RapidFuzz token sort ratio, Levenshtein similarity, Jaccard on name/address tokens, TF-IDF cosine (name + address), numeric token overlap, address RapidFuzz ratio, country match, common token count, number Jaccard.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">8. ML Model</div>
+        <p class="text-sm">LightGBM gradient-boosted classifier trained on labeled positive pairs (from ground truth) and hard-negative pairs (candidate pairs that are NOT in ground truth). Returns a probability score per pair.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">9. Hard-Negative Training</div>
+        <p class="text-sm">Hard negatives are non-matching candidate pairs sampled from the blocking output. These are more informative than random negatives because the model must learn to distinguish near-misses.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">10. F0.5 Optimization</div>
+        <p class="text-sm">After training, a threshold sweep (0.05 – 1.0) is run on the validation set. The threshold maximizing macro F0.5 is selected. F0.5 = (1.25 × P × R) / (0.25×P + R). This penalizes false merges more than missed matches.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">11. Singleton Handling</div>
+        <p class="text-sm">If no candidate pair exceeds the threshold for a Source 1 entity, it is declared a singleton (no match). Correct singletons score F0.5 = 1.0. False merges (predicting a match for a true singleton) score F0.5 = 0.0.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">12. Output Generation</div>
+        <p class="text-sm">matching_results.tsv: source1_entity_id → matched_entity_ids (comma-separated, or empty). candidate_pairs.tsv: source1_entity_id → candidate_entity_ids. Both are tab-separated. Every S1 entity has exactly one row.</p>
+      </div>
+      <div class="panel">
+        <div class="panel-title">13. Fair-Play Restrictions</div>
+        <p class="text-sm">The system NEVER calls: Google Maps, geocoding APIs, external business databases, government registries, entity resolution APIs, or any external internet data. All ML processing uses only the supplied challenge dataset.</p>
+      </div>
+    </section>
+
+    <!-- ══ PAGE: ARCHITECTURE ════════════════════════════════ -->
+    <section id="page-architecture" class="page">
+      <div class="section-title">System Architecture</div>
+      <div class="section-sub">End-to-end pipeline from raw TSV data to final output.</div>
+
+      <div class="panel" style="max-width:520px;margin:0 auto">
+        <div class="arch-flow">
+          <div class="arch-node highlight">📄 TSV Data (S1, S2, S3)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">🔍 Data Validation</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">🔧 Unicode / Name Normalization</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">📍 Address Normalization</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">🧱 Candidate Blocking (6 strategies)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node highlight">📋 candidate_pairs.tsv</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">📐 Similarity Feature Engineering (16 features)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">🤖 LightGBM ML Matching Model</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">📊 Match Probability Score</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">⚙ F0.5-Optimized Threshold</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node">🔀 MATCH / NO MATCH (Singleton)</div>
+          <div class="arch-arrow">↓</div>
+          <div class="arch-node highlight-green">📤 matching_results.tsv</div>
+        </div>
+      </div>
+
+      <div class="panel mt-20">
+        <div class="panel-title">🏗 Component Map</div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Layer</th><th>Module</th><th>Team</th></tr></thead>
+            <tbody>
+              <tr><td>Data Loading</td><td class="mono">backend/data/loader.py</td><td>Member 1</td></tr>
+              <tr><td>Normalization</td><td class="mono">backend/preprocessing/normalizer.py</td><td>Member 1</td></tr>
+              <tr><td>Blocking</td><td class="mono">backend/blocking/blocking.py</td><td>Member 1</td></tr>
+              <tr><td>Pipeline CLI</td><td class="mono">backend/blocking/candidate_generator.py</td><td>Member 1</td></tr>
+              <tr><td>Feature Engineering</td><td class="mono">backend/models/features.py</td><td>Member 2</td></tr>
+              <tr><td>ML Trainer</td><td class="mono">backend/models/trainer.py</td><td>Member 2</td></tr>
+              <tr><td>Predictor</td><td class="mono">backend/models/predictor.py</td><td>Member 2</td></tr>
+              <tr><td>F0.5 Evaluation</td><td class="mono">backend/evaluation/f05.py</td><td>Member 2</td></tr>
+              <tr><td>FastAPI Backend</td><td class="mono">backend/app.py</td><td>Member 3</td></tr>
+              <tr><td>Web Dashboard</td><td class="mono">frontend/</td><td>Member 3</td></tr>
+              <tr><td>Validation</td><td class="mono">/api/validate</td><td>Member 3</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+  </main><!-- /content -->
+</div><!-- /main -->
+
+<script src="/static/js/app.js"></script>
+<script>
+// Health-check API connection
+(async () => {
+  const pill = document.getElementById('api-status');
+  try {
+    const r = await fetch('http://localhost:8000/health');
+    if (r.ok) {
+      pill.textContent = '⬤ API Online';
+      pill.className = 'status-pill pill-ok';
+    } else throw new Error();
+  } catch {
+    pill.textContent = '⬤ API Offline';
+    pill.className = 'status-pill pill-danger';
+  }
+})();
+</script>
+</body>
+</html>
