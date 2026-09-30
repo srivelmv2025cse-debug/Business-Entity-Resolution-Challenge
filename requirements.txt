@@ -4,7 +4,7 @@ scikit-learn
 rapidfuzz
 lightgbm
 fastapi
-uvicorn
+uvicorn[standard]
 python-multipart
 joblib
 pytest

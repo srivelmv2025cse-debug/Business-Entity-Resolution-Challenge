@@ -1,0 +1,6 @@
+{
+  "threshold": 0.5,
+  "val_f05": 1.0,
+  "val_precision": 1.0,
+  "val_recall": 1.0
+}
